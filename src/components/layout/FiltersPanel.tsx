@@ -2,8 +2,10 @@ import {
   countryOptions,
   metricOptions,
   riskComponentOptions,
+  type RiskComponentFilter,
   useFilters,
 } from '../../state/FilterContext'
+import { isMapMetric } from '../../config/mapMetrics'
 
 type FilterSelectProps = {
   id: string
@@ -51,7 +53,11 @@ export function FiltersPanel() {
         label="Metric"
         value={filters.metric}
         options={metricOptions}
-        onChange={setMetric}
+        onChange={(value) => {
+          if (isMapMetric(value)) {
+            setMetric(value)
+          }
+        }}
       />
 
       <FilterSelect
@@ -59,7 +65,7 @@ export function FiltersPanel() {
         label="Risk component"
         value={filters.riskComponent}
         options={riskComponentOptions}
-        onChange={setRiskComponent}
+        onChange={(value) => setRiskComponent(value as RiskComponentFilter)}
       />
     </div>
   )

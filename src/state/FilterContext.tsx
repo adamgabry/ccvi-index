@@ -1,4 +1,6 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
+import { mapMetricOptions } from '../config/mapMetrics'
+import type { MapMetric } from '../types/metrics'
 
 export type FilterOption = {
   label: string
@@ -7,21 +9,27 @@ export type FilterOption = {
 
 export type FilterState = {
   country: string
-  metric: string
-  riskComponent: string
+  metric: MapMetric
+  riskComponent: RiskComponentFilter
 }
+
+export type RiskComponentFilter =
+  | 'all_components'
+  | 'climate_hazards'
+  | 'conflict'
+  | 'vulnerability'
 
 type FilterContextValue = {
   filters: FilterState
   setCountry: (country: string) => void
-  setMetric: (metric: string) => void
-  setRiskComponent: (riskComponent: string) => void
+  setMetric: (metric: MapMetric) => void
+  setRiskComponent: (riskComponent: RiskComponentFilter) => void
   updateFilter: <K extends keyof FilterState>(key: K, value: FilterState[K]) => void
 }
 
 const defaultFilterState: FilterState = {
   country: 'all',
-  metric: 'ccvi_overall',
+  metric: 'CCVI',
   riskComponent: 'all_components',
 }
 
@@ -60,21 +68,17 @@ export function useFilters() {
 
 export const countryOptions: FilterOption[] = [
   { label: 'All countries', value: 'all' },
-  { label: 'United States', value: 'us' },
-  { label: 'India', value: 'in' },
-  { label: 'Brazil', value: 'br' },
+  { label: 'Afghanistan (AFG)', value: 'AFG' },
+  { label: 'Chile (CHL)', value: 'CHL' },
+  { label: 'India (IND)', value: 'IND' },
+  { label: 'United States (USA)', value: 'USA' },
 ]
 
-export const metricOptions: FilterOption[] = [
-  { label: 'CCVI Overall', value: 'ccvi_overall' },
-  { label: 'Exposure', value: 'exposure' },
-  { label: 'Sensitivity', value: 'sensitivity' },
-  { label: 'Adaptive Capacity', value: 'adaptive_capacity' },
-]
+export const metricOptions: FilterOption[] = mapMetricOptions
 
 export const riskComponentOptions: FilterOption[] = [
   { label: 'All components', value: 'all_components' },
   { label: 'Climate Hazards', value: 'climate_hazards' },
-  { label: 'Socioeconomic', value: 'socioeconomic' },
-  { label: 'Infrastructure', value: 'infrastructure' },
+  { label: 'Conflict', value: 'conflict' },
+  { label: 'Vulnerability', value: 'vulnerability' },
 ]
