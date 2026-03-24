@@ -17,8 +17,8 @@ export function getMetricDomain(values: Array<number | null>): MetricDomain {
   return [min, max]
 }
 
-export function createMetricColorScale(values: Array<number | null>) {
-  const [min, max] = getMetricDomain(values)
+export function createMetricColorScale(values: Array<number | null>, domain?: MetricDomain) {
+  const [min, max] = domain ?? getMetricDomain(values)
   const scale = scaleSequential(interpolateYlOrRd).domain([min, max])
 
   return (value: number | null) => {

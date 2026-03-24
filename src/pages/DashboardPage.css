@@ -157,6 +157,13 @@
   gap: 1rem;
   padding: 1rem 1rem 0.8rem;
   border-bottom: 1px solid #e5eaf2;
+  align-items: flex-start;
+}
+
+.map-tab__header-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
 }
 
 .map-tab__header h2 {
@@ -194,6 +201,44 @@
   color: #64748b;
 }
 
+.map-tab__status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.map-tab__status-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.9rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: #f8fbff;
+  border: 1px solid #d9e5f2;
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.map-tab__brush-button {
+  margin-top: 0.35rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #0f172a;
+  padding: 0.45rem 0.8rem;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.map-tab__brush-button.is-active {
+  border-color: #0f766e;
+  background: #ccfbf1;
+  color: #115e59;
+}
+
 .map-tab__viewport-wrap {
   position: relative;
   height: 95%;
@@ -219,6 +264,26 @@
   min-height: 0;
 }
 
+.map-tab__brush-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.map-tab__brush-overlay.is-active {
+  pointer-events: auto;
+  cursor: crosshair;
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.map-tab__brush-rect {
+  position: absolute;
+  border: 1px solid #0f766e;
+  background: rgba(45, 212, 191, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45);
+}
+
 .map-tab__legend-overlay {
   position: absolute;
   right: 14px;
@@ -238,8 +303,8 @@
 .map-legend {
   border: 1px solid rgba(148, 163, 184, 0.45);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(3px);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(6px);
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
   padding: 0.72rem 0.78rem;
 }

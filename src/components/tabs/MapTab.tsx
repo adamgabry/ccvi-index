@@ -1,11 +1,8 @@
-import { useMemo } from 'react'
 import { CCVIMap } from '../map/CCVIMap'
-import { getPhase1MapRows } from '../../services/mapDataService'
-import { useFilters } from '../../state/FilterContext'
+import { useFilters } from '../../state/useFilters'
 
 export function MapTab() {
   const { filters } = useFilters()
-  const rows = useMemo(() => getPhase1MapRows({ country: filters.country }), [filters.country])
 
-  return <CCVIMap rows={rows} metric={filters.metric} />
+  return <CCVIMap metric={filters.metric} country={filters.country} period={filters.period} />
 }

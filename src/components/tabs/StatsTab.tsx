@@ -1,4 +1,4 @@
-import { useFilters } from '../../state/FilterContext'
+import { useFilters } from '../../state/useFilters'
 
 export function StatsTab() {
   const { filters } = useFilters()

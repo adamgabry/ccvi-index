@@ -1,10 +1,8 @@
 import {
-  countryOptions,
-  metricOptions,
-  riskComponentOptions,
   type RiskComponentFilter,
-  useFilters,
 } from '../../state/FilterContext'
+import { countryOptions, metricOptions, riskComponentOptions } from '../../state/filterOptions'
+import { useFilters } from '../../state/useFilters'
 import { isMapMetric } from '../../config/mapMetrics'
 
 type FilterSelectProps = {
@@ -31,7 +29,8 @@ function FilterSelect({ id, label, value, options, onChange }: FilterSelectProps
 }
 
 export function FiltersPanel() {
-  const { filters, setCountry, setMetric, setRiskComponent } = useFilters()
+  const { filters, periodOptions, isLoadingMetadata, setCountry, setMetric, setPeriod, setRiskComponent } =
+    useFilters()
 
   return (
     <div className="filters-panel">
@@ -58,6 +57,18 @@ export function FiltersPanel() {
             setMetric(value)
           }
         }}
+      />
+
+      <FilterSelect
+        id="period"
+        label="Quarter"
+        value={filters.period}
+        options={
+          periodOptions.length > 0
+            ? periodOptions
+            : [{ label: isLoadingMetadata ? 'Loading…' : 'No periods available', value: '' }]
+        }
+        onChange={setPeriod}
       />
 
       <FilterSelect

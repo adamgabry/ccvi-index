@@ -1,6 +1,7 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
-import { mapMetricOptions } from '../config/mapMetrics'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { fetchMapMetadata } from '../services/mapApi'
 import type { MapMetric } from '../types/metrics'
+import { FilterContext } from './filterContextStore'
 
 export type FilterOption = {
   label: string
@@ -10,6 +11,7 @@ export type FilterOption = {
 export type FilterState = {
   country: string
   metric: MapMetric
+  period: string
   riskComponent: RiskComponentFilter
 }
 
@@ -19,10 +21,13 @@ export type RiskComponentFilter =
   | 'conflict'
   | 'vulnerability'
 
-type FilterContextValue = {
+export type FilterContextValue = {
   filters: FilterState
+  periodOptions: FilterOption[]
+  isLoadingMetadata: boolean
   setCountry: (country: string) => void
   setMetric: (metric: MapMetric) => void
+  setPeriod: (period: string) => void
   setRiskComponent: (riskComponent: RiskComponentFilter) => void
   updateFilter: <K extends keyof FilterState>(key: K, value: FilterState[K]) => void
 }
@@ -30,55 +35,70 @@ type FilterContextValue = {
 const defaultFilterState: FilterState = {
   country: 'all',
   metric: 'CCVI',
+  period: '',
   riskComponent: 'all_components',
 }
 
-const FilterContext = createContext<FilterContextValue | undefined>(undefined)
-
 export function FilterProvider({ children }: { children: ReactNode }) {
   const [filters, setFilters] = useState<FilterState>(defaultFilterState)
+  const [periodOptions, setPeriodOptions] = useState<FilterOption[]>([])
+  const [isLoadingMetadata, setIsLoadingMetadata] = useState(true)
 
   const updateFilter = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
     setFilters((previous) => ({ ...previous, [key]: value }))
   }
 
+  useEffect(() => {
+    let active = true
+
+    fetchMapMetadata()
+      .then((metadata) => {
+        if (!active) {
+          return
+        }
+
+        const nextPeriodOptions = metadata.periods.map((period) => ({
+          label: period.label,
+          value: period.value,
+        }))
+
+        setPeriodOptions(nextPeriodOptions)
+        setFilters((previous) => ({
+          ...previous,
+          period: previous.period || nextPeriodOptions[0]?.value || '',
+        }))
+      })
+      .catch(() => {
+        if (!active) {
+          return
+        }
+
+        setPeriodOptions([])
+      })
+      .finally(() => {
+        if (active) {
+          setIsLoadingMetadata(false)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
   const value = useMemo<FilterContextValue>(
     () => ({
       filters,
+      periodOptions,
+      isLoadingMetadata,
       setCountry: (country) => updateFilter('country', country),
       setMetric: (metric) => updateFilter('metric', metric),
+      setPeriod: (period) => updateFilter('period', period),
       setRiskComponent: (riskComponent) => updateFilter('riskComponent', riskComponent),
       updateFilter,
     }),
-    [filters],
+    [filters, isLoadingMetadata, periodOptions],
   )
 
   return <FilterContext.Provider value={value}>{children}</FilterContext.Provider>
 }
-
-export function useFilters() {
-  const context = useContext(FilterContext)
-
-  if (!context) {
-    throw new Error('useFilters must be used within a FilterProvider')
-  }
-
-  return context
-}
-
-export const countryOptions: FilterOption[] = [
-  { label: 'All countries', value: 'all' },
-  { label: 'Afghanistan (AFG)', value: 'AFG' },
-  { label: 'Chile (CHL)', value: 'CHL' },
-  { label: 'India (IND)', value: 'IND' },
-  { label: 'United States (USA)', value: 'USA' },
-]
-
-export const metricOptions: FilterOption[] = mapMetricOptions
-
-export const riskComponentOptions: FilterOption[] = [
-  { label: 'All components', value: 'all_components' },
-  { label: 'Climate Hazards', value: 'climate_hazards' },
-  { label: 'Conflict', value: 'conflict' },
-  { label: 'Vulnerability', value: 'vulnerability' },
-]

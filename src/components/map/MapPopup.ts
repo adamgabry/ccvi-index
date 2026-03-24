@@ -1,9 +1,26 @@
 import { mapMetricConfig } from '../../config/mapMetrics'
-import type { MapPointProperties } from '../../types/map'
+import type { MapCellProperties, MapPointProperties } from '../../types/map'
 import { formatMetricValue } from '../../utils/map/metricValue'
 
-export function getPopupHtml(properties: MapPointProperties): string {
+function formatCellExtent(bounds: [number, number, number, number]): string {
+  const [minLon, minLat, maxLon, maxLat] = bounds
+  return `${minLat.toFixed(2)}, ${minLon.toFixed(2)} to ${maxLat.toFixed(2)}, ${maxLon.toFixed(2)}`
+}
+
+export function getPopupHtml(properties: MapPointProperties | MapCellProperties): string {
   const metricLabel = mapMetricConfig[properties.metric].label
+
+  if (properties.kind === 'cell') {
+    return `
+      <div class="map-popup">
+        <div><strong>Metric:</strong> ${metricLabel}</div>
+        <div><strong>Mean:</strong> ${formatMetricValue(properties.meanValue)}</div>
+        <div><strong>Min / Max:</strong> ${formatMetricValue(properties.minValue)} / ${formatMetricValue(properties.maxValue)}</div>
+        <div><strong>Count:</strong> ${properties.count.toLocaleString()}</div>
+        <div><strong>Cell extent:</strong> ${formatCellExtent(properties.bbox)}</div>
+      </div>
+    `
+  }
 
   return `
     <div class="map-popup">
