@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { DashboardLayout } from '../components/layout/DashboardLayout'
 import { FiltersPanel } from '../components/layout/FiltersPanel'
 import {
@@ -21,17 +21,20 @@ const tabs: DashboardTab[] = [
 function DashboardContent() {
   const [activeTab, setActiveTab] = useState<DashboardTabKey>('map')
 
-  const activeView = useMemo(() => {
-    switch (activeTab) {
-      case 'stats':
-        return <StatsTab />
-      case 'trends':
-        return <TrendsTab />
-      case 'map':
-      default:
-        return <MapTab />
-    }
-  }, [activeTab])
+  let activeView: ReactNode
+
+  switch (activeTab) {
+    case 'stats':
+      activeView = <StatsTab />
+      break
+    case 'trends':
+      activeView = <TrendsTab />
+      break
+    case 'map':
+    default:
+      activeView = <MapTab />
+      break
+  }
 
   const leftContent = (
     <div className="dashboard-main">

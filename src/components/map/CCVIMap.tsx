@@ -227,7 +227,9 @@ export function CCVIMap({ metric, country, period }: CCVIMapProps) {
       <p className="map-tab__caption">
         {renderData
           ? `Showing all ${renderData.meta.returnedRows.toLocaleString()} points for the selected quarter. Zoom and brush only change the view, not the queried dataset.`
-          : 'Loading quarter snapshot points…'}
+          : bootstrapState.isLoading
+            ? 'Loading quarter snapshot points…'
+            : 'Waiting for a valid quarter selection…'}
       </p>
     </section>
   )

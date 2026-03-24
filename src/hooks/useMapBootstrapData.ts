@@ -6,6 +6,7 @@ import type { MapMetric } from '../types/metrics'
 type MapBootstrapState = {
   data: MapDataResponse | null
   error: string | null
+  isLoading: boolean
 }
 
 function parsePeriod(period: string): { year?: number; quarter?: number } {
@@ -25,6 +26,7 @@ export function useMapBootstrapData(metric: MapMetric, country: string, period: 
   const [state, setState] = useState<MapBootstrapState>({
     data: null,
     error: null,
+    isLoading: true,
   })
 
   useEffect(() => {
@@ -47,6 +49,7 @@ export function useMapBootstrapData(metric: MapMetric, country: string, period: 
         setState({
           data,
           error: null,
+          isLoading: false,
         })
       })
       .catch((error: unknown) => {
@@ -57,6 +60,7 @@ export function useMapBootstrapData(metric: MapMetric, country: string, period: 
         setState({
           data: null,
           error: error instanceof Error ? error.message : 'Failed to load bootstrap map data.',
+          isLoading: false,
         })
       })
 
