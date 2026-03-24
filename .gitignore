@@ -24,3 +24,4 @@ dist-ssr
 *.sw?
 data/index-full.parquet
 data/scores.parquet
+data/scores.parquet
