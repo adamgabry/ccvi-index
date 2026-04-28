@@ -15,7 +15,7 @@ import './DashboardPage.css'
 const tabs: DashboardTab[] = [
   { key: 'map', label: 'Map' },
   { key: 'stats', label: 'Stats' },
-  { key: 'trends', label: 'Trends' },
+  { key: 'trends', label: 'Radar' },
 ]
 
 function DashboardContent() {

@@ -19,6 +19,7 @@ const requestSchema = z.object({
   viewportHeight: numericParam.positive(),
   metrics: z.string().min(1),
   country: z.string().optional(),
+  continent: z.string().optional(),
   year: z.preprocess((value) => (value === undefined ? undefined : Number(value)), z.number().int().optional()),
   quarter: z.preprocess(
     (value) => (value === undefined ? undefined : Number(value)),
@@ -56,6 +57,7 @@ function parseRequest(query: z.infer<typeof requestSchema>): MapDataRequest {
     ),
     filters: {
       country: query.country,
+      continent: query.continent,
       year: query.year,
       quarter: query.quarter,
       riskComponent: query.riskComponent,
@@ -81,9 +83,10 @@ app.get('/api/map/bootstrap', async (request: Request, response: Response, next:
     const metricValue = z.string().min(1).parse(request.query.metric)
     const metrics = assertMetrics([metricValue])
     const country = typeof request.query.country === 'string' ? request.query.country : undefined
+    const continent = typeof request.query.continent === 'string' ? request.query.continent : undefined
     const year = typeof request.query.year === 'string' ? Number(request.query.year) : undefined
     const quarter = typeof request.query.quarter === 'string' ? Number(request.query.quarter) : undefined
-    const data = await getBootstrapMapData(metrics[0], { country, year, quarter })
+    const data = await getBootstrapMapData(metrics[0], { country, continent, year, quarter })
     response.json(data)
   } catch (error) {
     next(error)
@@ -111,6 +114,43 @@ app.use((error: unknown, _request: Request, response: Response, next: NextFuncti
   })
 })
 
+
+
+
 app.listen(port, () => {
   console.log(`Map API listening on http://127.0.0.1:${port}`)
+})
+
+
+import { getRadarData } from './query/radarQueryService'
+
+app.get('/api/radar/data', async (request: Request, response: Response, next: NextFunction) => {
+  try {
+    const columns = z.string().min(1).parse(request.query.columns)
+    const columnList = columns.split(',').map((c) => c.trim()).filter(Boolean)
+    const country   = typeof request.query.country   === 'string' ? request.query.country   : undefined
+    const continent = typeof request.query.continent === 'string' ? request.query.continent : undefined
+    const year      = typeof request.query.year      === 'string' ? Number(request.query.year) : undefined
+    const quarter   = typeof request.query.quarter   === 'string' ? Number(request.query.quarter) : undefined
+    const data = await getRadarData(columnList, { country, continent, year, quarter })
+    response.json(data)
+  } catch (error) {
+    next(error)
+  }
+})
+
+
+import { getStatsSummary } from './query/statsQueryService'
+
+app.get('/api/stats/summary', async (request: Request, response: Response, next: NextFunction) => {
+  try {
+    const country = typeof request.query.country === 'string' ? request.query.country : undefined
+    const continent = typeof request.query.continent === 'string' ? request.query.continent : undefined
+    const year = typeof request.query.year === 'string' ? Number(request.query.year) : undefined
+    const quarter = typeof request.query.quarter === 'string' ? Number(request.query.quarter) : undefined
+    const data = await getStatsSummary({ country, continent, year, quarter })
+    response.json(data)
+  } catch (error) {
+    next(error)
+  }
 })

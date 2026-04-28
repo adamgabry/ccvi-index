@@ -1,5 +1,5 @@
 import type { MapBounds, MapFilters, MapViewport } from '../types/mapApi'
-import { phase1MapMetrics, type MapMetric } from '../../src/types/metrics'
+import { phase1MapMetrics, type Phase1Metric } from '../../src/types/metrics'
 
 export const MAX_RAW_POINTS = 1000
 export const RAW_POINT_ZOOM_THRESHOLD = 11
@@ -45,17 +45,17 @@ export function getCellPixelSize(zoom: number, viewport?: MapViewport): number {
   return Math.max(baseCellPixelSize, adaptiveCellSize)
 }
 
-export function assertMetrics(metrics: string[]): MapMetric[] {
+export function assertMetrics(metrics: string[]): Phase1Metric[] {
   if (metrics.length === 0) {
     throw new Error('At least one metric must be selected.')
   }
 
   return metrics.map((metric) => {
-    if (!phase1MapMetrics.includes(metric as MapMetric)) {
+    if (!phase1MapMetrics.includes(metric as Phase1Metric)) {
       throw new Error(`Unsupported metric: ${metric}`)
     }
 
-    return metric as MapMetric
+    return metric as Phase1Metric
   })
 }
 
@@ -63,7 +63,7 @@ function quoteSqlString(value: string): string {
   return `'${value.replaceAll("'", "''")}'`
 }
 
-function quoteIdentifier(value: MapMetric): string {
+function quoteIdentifier(value: Phase1Metric): string {
   return `"${value}"`
 }
 
@@ -79,6 +79,14 @@ function buildFilterClauses(bounds: MapBounds, filters?: MapFilters): string[] {
 
   if (filters?.country && filters.country !== 'all') {
     clauses.push(`iso3 = ${quoteSqlString(filters.country)}`)
+  }
+
+  if (filters?.continent && filters.continent !== 'all') {
+    clauses.push(`continent = ${quoteSqlString(filters.continent)}`)
+  }
+
+  if (filters?.continent && filters.continent !== 'all') {
+    clauses.push(`continent = ${quoteSqlString(filters.continent)}`)
   }
 
   if (typeof filters?.year === 'number') {
@@ -152,7 +160,7 @@ export function buildCountQuery(parquetPath: string, bounds: MapBounds, filters?
 export function buildRawPointsQuery(
   parquetPath: string,
   bounds: MapBounds,
-  metrics: MapMetric[],
+  metrics: Phase1Metric[],
   filters?: MapFilters,
 ): string {
   const selectedColumns = ['pgid', 'year', 'quarter', 'lat', 'lon', 'iso3', ...metrics.map(quoteIdentifier)]
@@ -177,13 +185,17 @@ export function buildRawPointsQuery(
 
 export function buildBootstrapPointsQuery(
   parquetPath: string,
-  metric: MapMetric,
+  metric: Phase1Metric,
   filters?: MapFilters,
 ): string {
   const filterClauses = [`${quoteIdentifier(metric)} IS NOT NULL`]
 
   if (filters?.country && filters.country !== 'all') {
     filterClauses.push(`iso3 = ${quoteSqlString(filters.country)}`)
+  }
+
+  if (filters?.continent && filters.continent !== 'all') {
+    filterClauses.push(`continent = ${quoteSqlString(filters.continent)}`)
   }
 
   if (typeof filters?.year === 'number') {
@@ -215,7 +227,7 @@ export function buildAggregatedCellsQuery(
   bounds: MapBounds,
   zoom: number,
   viewport: MapViewport,
-  metrics: MapMetric[],
+  metrics: Phase1Metric[],
   filters?: MapFilters,
 ): string {
   const cellPixelSize = getCellPixelSize(zoom, viewport)
@@ -262,5 +274,14 @@ export function buildAggregatedCellsQuery(
     FROM binned
     GROUP BY cell_x, cell_y
     ORDER BY cell_y, cell_x
+  `
+}
+
+export function buildContinentsMetadataQuery(parquetPath: string): string {
+  return `
+    SELECT DISTINCT continent
+    FROM read_parquet('${parquetPath.replaceAll("'", "''")}')
+    WHERE continent IS NOT NULL
+    ORDER BY continent
   `
 }

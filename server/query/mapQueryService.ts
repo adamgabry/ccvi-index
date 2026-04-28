@@ -7,7 +7,7 @@ import type {
   MetricSummary,
   RawPointFeature,
 } from '../types/mapApi'
-import { phase1MapMetrics, type MapMetric } from '../../src/types/metrics'
+import { phase1MapMetrics, type Phase1Metric } from '../../src/types/metrics'
 import { parquetPath, runQuery } from './duckdbClient'
 import {
   buildBootstrapPointsQuery,
@@ -16,6 +16,7 @@ import {
   buildCountryMetadataQuery,
   buildMetricDomainsQuery,
   buildPeriodsMetadataQuery,
+  buildContinentsMetadataQuery,
   buildRawPointsQuery,
   MAX_AGGREGATED_FEATURES,
   MAX_RAW_POINTS,
@@ -27,7 +28,7 @@ type CountRow = {
   total_count: number
 }
 
-type MetricDomainRow = Partial<Record<`min_${MapMetric}` | `max_${MapMetric}`, number | null>>
+type MetricDomainRow = Partial<Record<`min_${Phase1Metric}` | `max_${Phase1Metric}`, number | null>>
 
 type CountryRow = {
   iso3: string | null
@@ -45,7 +46,7 @@ type AggregatedCellRow = {
   max_lon: number
   min_lat: number
   max_lat: number
-} & Partial<Record<`mean_${MapMetric}` | `min_${MapMetric}` | `max_${MapMetric}`, number | null>>
+} & Partial<Record<`mean_${Phase1Metric}` | `min_${Phase1Metric}` | `max_${Phase1Metric}`, number | null>>
 
 type RawPointRow = {
   pgid: number
@@ -54,7 +55,7 @@ type RawPointRow = {
   lat: number
   lon: number
   iso3: string
-} & Partial<Record<MapMetric, number | null>>
+} & Partial<Record<Phase1Metric, number | null>>
 
 let metricDomainsPromise: Promise<MetricDomainMap> | null = null
 let countriesPromise: Promise<string[]> | null = null
@@ -79,7 +80,7 @@ function toMetricDomains(row: MetricDomainRow): MetricDomainMap {
   }, {} as MetricDomainMap)
 }
 
-function getMetricSummary(row: AggregatedCellRow, metric: MapMetric): MetricSummary {
+function getMetricSummary(row: AggregatedCellRow, metric: Phase1Metric): MetricSummary {
   return {
     mean: row[`mean_${metric}`] ?? null,
     min: row[`min_${metric}`] ?? null,
@@ -103,6 +104,15 @@ async function getCountries(): Promise<string[]> {
   return countriesPromise
 }
 
+let continentsPromise: Promise<string[]> | null = null
+
+async function getContinents(): Promise<string[]> {
+  continentsPromise ??= runQuery<{ continent: string | null }>(buildContinentsMetadataQuery(parquetPath)).then((rows) =>
+    rows.map((row) => row.continent).filter((value): value is string => Boolean(value)),
+  )
+  return continentsPromise
+}
+
 async function getPeriods(): Promise<MapMetadataResponse['periods']> {
   periodsPromise ??= runQuery<PeriodRow>(buildPeriodsMetadataQuery(parquetPath)).then((rows) =>
     rows.map((row) => ({
@@ -116,7 +126,7 @@ async function getPeriods(): Promise<MapMetadataResponse['periods']> {
   return periodsPromise
 }
 
-function toAggregatedFeatures(rows: AggregatedCellRow[], metrics: MapMetric[]): AggregatedCellFeature[] {
+function toAggregatedFeatures(rows: AggregatedCellRow[], metrics: Phase1Metric[]): AggregatedCellFeature[] {
   return rows.map((row) => ({
     id: row.id,
     kind: 'cell',
@@ -130,7 +140,7 @@ function toAggregatedFeatures(rows: AggregatedCellRow[], metrics: MapMetric[]): 
   }))
 }
 
-function toRawPointFeatures(rows: RawPointRow[], metrics: MapMetric[]): RawPointFeature[] {
+function toRawPointFeatures(rows: RawPointRow[], metrics: Phase1Metric[]): RawPointFeature[] {
   return rows.map((row) => ({
     id: `${row.pgid}-${row.year}-${row.quarter}`,
     kind: 'point',
@@ -147,9 +157,10 @@ function toRawPointFeatures(rows: RawPointRow[], metrics: MapMetric[]): RawPoint
 }
 
 export async function getMapMetadata(): Promise<MapMetadataResponse> {
-  const [metricDomains, countries, periods] = await Promise.all([
+  const [metricDomains, countries, continents, periods] = await Promise.all([
     getMetricDomains(),
     getCountries(),
+    getContinents(),
     getPeriods(),
   ])
 
@@ -157,15 +168,16 @@ export async function getMapMetadata(): Promise<MapMetadataResponse> {
     metrics: [...phase1MapMetrics],
     metricDomains,
     countries,
+    continents,
     periods,
   }
 }
 
 export async function getBootstrapMapData(
-  metric: MapMetric,
+  metric: Phase1Metric,
   filters?: { country?: string; year?: number; quarter?: number },
 ): Promise<MapDataResponse> {
-  const cacheKey = `${metric}:${filters?.country ?? 'all'}:${filters?.year ?? 'na'}:${filters?.quarter ?? 'na'}`
+  const cacheKey = `${metric}:${filters?.country ?? 'all'}:${filters?.continent ?? 'all'}:${filters?.year ?? 'na'}:${filters?.quarter ?? 'na'}`
   const cachedResponse = bootstrapCache.get(cacheKey)
 
   if (cachedResponse) {

@@ -1,52 +1,36 @@
 import type { MapMetric, MapMetricConfig } from '../types/metrics'
 
-type SelectOption = {
-  label: string
-  value: string
-}
-
 export const mapMetricConfig: Record<MapMetric, MapMetricConfig> = {
   CCVI: {
     key: 'CCVI',
-    label: 'CCVI Overall',
+    label: 'CCVI',
     category: 'overall',
-    description: 'Composite climate-conflict vulnerability index score.',
+    description: 'Climate—Conflict—Vulnerability Index composite score.',
   },
-  CLI: {
-    key: 'CLI',
-    label: 'Climate',
+  Climate: {
+    key: 'Climate',
+    label: 'Climate hazard exposure',
     category: 'pillar',
-    description: 'Climate hazard and stressor score.',
+    description: 'Climate risk score from hazard exposure.',
   },
-  CON: {
-    key: 'CON',
-    label: 'Conflict',
+  Conflict: {
+    key: 'Conflict',
+    label: 'Conflict hazard exposure',
     category: 'pillar',
-    description: 'Conflict intensity and context score.',
+    description: 'Conflict risk score from hazard exposure.',
   },
-  VUL: {
-    key: 'VUL',
+  Vulnerability: {
+    key: 'Vulnerability',
     label: 'Vulnerability',
     category: 'pillar',
     description: 'Socioeconomic, political, demographic, and environmental vulnerability score.',
   },
-  CLI_risk: {
-    key: 'CLI_risk',
-    label: 'Climate Risk',
-    category: 'risk',
-    description: 'Risk score from climate hazards and exposure.',
-  },
-  CON_risk: {
-    key: 'CON_risk',
-    label: 'Conflict Risk',
-    category: 'risk',
-    description: 'Risk score from conflict hazards and exposure.',
-  },
 }
 
-export const mapMetricOptions: SelectOption[] = Object.values(mapMetricConfig).map((config) => ({
-  label: config.label,
-  value: config.key,
+export const mapMetricOptions = Object.values(mapMetricConfig).map((c) => ({
+  label: c.label,
+  value: c.key,
 }))
 
-export const isMapMetric = (value: string): value is MapMetric => value in mapMetricConfig
+export const isMapMetric = (value: string): value is MapMetric =>
+  value in mapMetricConfig
