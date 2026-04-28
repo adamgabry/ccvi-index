@@ -5,7 +5,7 @@ import type {
   MapPointProperties,
 } from '../../types/map'
 import type { AggregatedCellFeature, MapDataResponse, RawPointFeature } from '../../types/mapData'
-import type { MapMetric } from '../../types/metrics'
+import type { Phase1Metric } from '../../types/metrics'
 import { createMetricColorScale, type MetricDomain, getNoDataColor } from './colorScale'
 
 type MapFeatureCollections = {
@@ -44,7 +44,7 @@ function getAggregatedMarkerSize(count: number, maxCount: number): number {
   return 5 + ratio * 15
 }
 
-function getSelectedMetricSummary(feature: AggregatedCellFeature, metric: MapMetric) {
+function getSelectedMetricSummary(feature: AggregatedCellFeature, metric: Phase1Metric) {
   return feature.metrics[metric] ?? {
     mean: null,
     min: null,
@@ -52,7 +52,7 @@ function getSelectedMetricSummary(feature: AggregatedCellFeature, metric: MapMet
   }
 }
 
-function getSelectedMetricValue(feature: RawPointFeature, metric: MapMetric) {
+function getSelectedMetricValue(feature: RawPointFeature, metric: Phase1Metric) {
   return feature.metrics[metric] ?? null
 }
 
@@ -61,7 +61,7 @@ export function toMapFeatureCollections({
   metric,
 }: {
   response: MapDataResponse | null
-  metric: MapMetric
+  metric: Phase1Metric
 }): MapFeatureCollections {
   if (!response) {
     return {

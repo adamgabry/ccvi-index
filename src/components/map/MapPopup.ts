@@ -1,6 +1,9 @@
-import { mapMetricConfig } from '../../config/mapMetrics'
 import type { MapCellProperties, MapPointProperties } from '../../types/map'
 import { formatMetricValue } from '../../utils/map/metricValue'
+
+const PHASE1_LABELS: Record<string, string> = {
+  CCVI: 'CCVI', CLI_risk: 'Climate Risk', CON_risk: 'Conflict Risk', VUL: 'Vulnerability',
+}
 
 function formatCellExtent(bounds: [number, number, number, number]): string {
   const [minLon, minLat, maxLon, maxLat] = bounds
@@ -8,7 +11,7 @@ function formatCellExtent(bounds: [number, number, number, number]): string {
 }
 
 export function getPopupHtml(properties: MapPointProperties | MapCellProperties): string {
-  const metricLabel = mapMetricConfig[properties.metric].label
+  const metricLabel = PHASE1_LABELS[properties.metric] ?? properties.metric
 
   if (properties.kind === 'cell') {
     return `

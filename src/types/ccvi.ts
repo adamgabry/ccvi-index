@@ -1,4 +1,4 @@
-import type { MapMetric } from './metrics'
+import type { Phase1Metric } from './metrics'
 
 export type CCVIPhase1Dimensions = {
   year: number
@@ -10,7 +10,7 @@ export type CCVIPhase1Dimensions = {
 }
 
 export type CCVIPhase1MetricValues = {
-  [metric in MapMetric]: number | null
+  [metric in Phase1Metric]: number | null
 }
 
 export type CCVIMapRow = CCVIPhase1Dimensions & CCVIPhase1MetricValues

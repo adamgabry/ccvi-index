@@ -1,9 +1,11 @@
 import type { MapMetadataResponse, MapDataResponse, MapViewportQuery } from '../types/mapData'
 
-function appendIfDefined(searchParams: URLSearchParams, key: string, value: string | number | undefined) {
-  if (value !== undefined && value !== '') {
-    searchParams.set(key, String(value))
-  }
+function appendIfDefined(
+  sp: URLSearchParams,
+  key: string,
+  value: string | number | undefined,
+) {
+  if (value !== undefined && value !== '') sp.set(key, String(value))
 }
 
 async function readJsonResponse<T>(response: Response): Promise<T> {
@@ -11,7 +13,6 @@ async function readJsonResponse<T>(response: Response): Promise<T> {
     const payload = (await response.json().catch(() => null)) as { error?: string } | null
     throw new Error(payload?.error ?? 'Request failed.')
   }
-
   return (await response.json()) as T
 }
 
@@ -19,7 +20,7 @@ export async function fetchMapData(
   query: MapViewportQuery,
   options?: { signal?: AbortSignal },
 ): Promise<MapDataResponse> {
-  const searchParams = new URLSearchParams({
+  const sp = new URLSearchParams({
     minLon: String(query.bounds.minLon),
     minLat: String(query.bounds.minLat),
     maxLon: String(query.bounds.maxLon),
@@ -29,41 +30,35 @@ export async function fetchMapData(
     viewportHeight: String(Math.round(query.viewport.height)),
     metrics: query.metrics.join(','),
   })
-
-  appendIfDefined(searchParams, 'country', query.filters?.country)
-  appendIfDefined(searchParams, 'year', query.filters?.year)
-  appendIfDefined(searchParams, 'quarter', query.filters?.quarter)
-
-  const response = await fetch(`/api/map/data?${searchParams.toString()}`, {
-    signal: options?.signal,
-  })
-
+  appendIfDefined(sp, 'country', query.filters?.country)
+  appendIfDefined(sp, 'year', query.filters?.year)
+  appendIfDefined(sp, 'quarter', query.filters?.quarter)
+  const response = await fetch(`/api/map/data?${sp}`, { signal: options?.signal })
   return readJsonResponse<MapDataResponse>(response)
 }
 
-export async function fetchMapMetadata(options?: { signal?: AbortSignal }): Promise<MapMetadataResponse> {
-  const response = await fetch('/api/map/metadata', {
-    signal: options?.signal,
-  })
-
+export async function fetchMapMetadata(
+  options?: { signal?: AbortSignal },
+): Promise<MapMetadataResponse> {
+  const response = await fetch('/api/map/metadata', { signal: options?.signal })
   return readJsonResponse<MapMetadataResponse>(response)
 }
 
 export async function fetchBootstrapMapData(
   metric: string,
-  options?: { country?: string; year?: number; quarter?: number; signal?: AbortSignal },
+  options?: {
+    country?: string
+    continent?: string
+    year?: number
+    quarter?: number
+    signal?: AbortSignal
+  },
 ): Promise<MapDataResponse> {
-  const searchParams = new URLSearchParams({
-    metric,
-  })
-
-  appendIfDefined(searchParams, 'country', options?.country)
-  appendIfDefined(searchParams, 'year', options?.year)
-  appendIfDefined(searchParams, 'quarter', options?.quarter)
-
-  const response = await fetch(`/api/map/bootstrap?${searchParams.toString()}`, {
-    signal: options?.signal,
-  })
-
+  const sp = new URLSearchParams({ metric })
+  appendIfDefined(sp, 'country', options?.country)
+  appendIfDefined(sp, 'continent', options?.continent)
+  appendIfDefined(sp, 'year', options?.year)
+  appendIfDefined(sp, 'quarter', options?.quarter)
+  const response = await fetch(`/api/map/bootstrap?${sp}`, { signal: options?.signal })
   return readJsonResponse<MapDataResponse>(response)
 }

@@ -1,4 +1,4 @@
-import type { MapMetric } from '../../src/types/metrics'
+import type { Phase1Metric } from '../../src/types/metrics'
 
 export type MapBounds = {
   minLon: number
@@ -14,6 +14,7 @@ export type MapViewport = {
 
 export type MapFilters = {
   country?: string
+  continent?: string
   year?: number
   quarter?: number
   riskComponent?: string
@@ -23,7 +24,7 @@ export type MapDataRequest = {
   bounds: MapBounds
   zoom: number
   viewport: MapViewport
-  metrics: MapMetric[]
+  metrics: Phase1Metric[]
   filters?: MapFilters
 }
 
@@ -38,8 +39,8 @@ export type MetricSummary = {
   max: number | null
 }
 
-export type MetricSummaryMap = Partial<Record<MapMetric, MetricSummary>>
-export type MetricDomainMap = Record<MapMetric, MetricDomain>
+export type MetricSummaryMap = Partial<Record<Phase1Metric, MetricSummary>>
+export type MetricDomainMap = Record<Phase1Metric, MetricDomain>
 
 export type AggregatedCellFeature = {
   id: string
@@ -58,7 +59,7 @@ export type RawPointFeature = {
   pgid: number
   year: number
   quarter: number
-  metrics: Partial<Record<MapMetric, number | null>>
+  metrics: Partial<Record<Phase1Metric, number | null>>
 }
 
 export type MapDataResponse = {
@@ -78,9 +79,10 @@ export type MapDataResponse = {
 }
 
 export type MapMetadataResponse = {
-  metrics: MapMetric[]
+  metrics: Phase1Metric[]
   metricDomains: MetricDomainMap
   countries: string[]
+  continents: string[]
   periods: Array<{
     year: number
     quarter: number

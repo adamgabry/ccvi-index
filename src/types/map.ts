@@ -1,9 +1,9 @@
-import type { MapMetric } from './metrics'
+import type { Phase1Metric } from './metrics'
 
 export type MapCellProperties = {
   kind: 'cell'
   id: string
-  metric: MapMetric
+  metric: Phase1Metric
   meanValue: number | null
   minValue: number | null
   maxValue: number | null
@@ -21,7 +21,7 @@ export type MapPointProperties = {
   pgid: number
   year: number
   quarter: number
-  metric: MapMetric
+  metric: Phase1Metric
   metricValue: number | null
   color: string
 }

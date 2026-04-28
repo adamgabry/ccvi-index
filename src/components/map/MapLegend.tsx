@@ -21,11 +21,10 @@ export function MapLegend({ metric, domain, mode }: MapLegendProps) {
     )
   }
 
-  const min = domain.min
-  const max = domain.max
+  const { min, max } = domain
   const colorScale = createMetricColorScale([], [min, max])
-  const stepValues = Array.from({ length: legendSteps }, (_, index) => {
-    const ratio = index / (legendSteps - 1)
+  const stepValues = Array.from({ length: legendSteps }, (_, i) => {
+    const ratio = i / (legendSteps - 1)
     return min + (max - min) * ratio
   })
 
