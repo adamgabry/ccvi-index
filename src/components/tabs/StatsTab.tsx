@@ -1,9 +1,13 @@
 import { useFilters } from '../../state/useFilters'
 import { useStatsData } from '../../hooks/useStatsData'
 import { SummaryTable } from '../stats/SummaryTable'
-import { SwarmPlot } from '../stats/SwarmPlot'
+import { ViolinPlot } from '../stats/ViolinPlot'
+import { CountryBeeswarm } from '../stats/CountryBeeswarm'
 import { CorrelationHeatmap } from '../stats/CorrelationHeatmap'
-import { RidgelineChart } from '../stats/RidgelineChart'
+
+const METRIC_LABELS: Record<string, string> = {
+  CCVI: 'CCVI', Climate: 'Climate Risk', Conflict: 'Conflict Risk', Vulnerability: 'Vulnerability',
+}
 
 export function StatsTab() {
   const { filters } = useFilters()
@@ -34,13 +38,8 @@ export function StatsTab() {
     )
   }
 
-  if (error) {
-    return <div className="stats-empty"><p>⚠️ {error}</p></div>
-  }
-
-  if (!data) {
-    return <div className="stats-empty"><p>No data available.</p></div>
-  }
+  if (error) return <div className="stats-empty"><p>⚠️ {error}</p></div>
+  if (!data)  return <div className="stats-empty"><p>No data available.</p></div>
 
   return (
     <div className="stats-tab">
@@ -59,21 +58,21 @@ export function StatsTab() {
         <header className="stats-section__header">
           <h3 className="stats-section__title">Distribution by Continent</h3>
           <span className="stats-section__subtitle">
-            Ridgeline — <strong>{mapLabel(filters.metric)}</strong> density per continent
+            Violin — <strong>{METRIC_LABELS[filters.metric] ?? filters.metric}</strong> density shape per continent
           </span>
         </header>
-        <RidgelineChart distributions={data.continentDistributions} metric={filters.metric} />
+        <ViolinPlot distributions={data.continentDistributions} metric={filters.metric} />
       </section>
 
       <div className="stats-row">
         <section className="stats-section stats-section--half">
           <header className="stats-section__header">
-            <h3 className="stats-section__title">Swarm Plot by Continent</h3>
+            <h3 className="stats-section__title">Country Scores</h3>
             <span className="stats-section__subtitle">
-              Individual data points with median and mean
+              One dot per country · hover for details
             </span>
           </header>
-          <SwarmPlot distributions={data.continentDistributions} metric={filters.metric} />
+          <CountryBeeswarm countryScores={data.countryScores} metric={filters.metric} />
         </section>
 
         <section className="stats-section stats-section--half">
@@ -87,14 +86,4 @@ export function StatsTab() {
 
     </div>
   )
-}
-
-function mapLabel(metric: string): string {
-  const labels: Record<string, string> = {
-    CCVI: 'CCVI',
-    Climate: 'Climate Risk',
-    Conflict: 'Conflict Risk',
-    Vulnerability: 'Vulnerability',
-  }
-  return labels[metric] ?? metric
 }

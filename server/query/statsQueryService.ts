@@ -31,9 +31,19 @@ export type CorrelationEntry = {
   r: number
 }
 
+
+export type CountryScore = {
+  iso3: string
+  continent: string
+  metric: Phase1Metric
+  mean: number
+  n: number
+}
+
 export type StatsSummaryResponse = {
   metricStats: MetricStats[]
   continentDistributions: ContinentDistribution[]
+  countryScores: CountryScore[]
   correlations: CorrelationEntry[]
 }
 
@@ -123,7 +133,6 @@ export async function getStatsSummary(filters?: StatsFilters): Promise<StatsSumm
     }))
   )
 
-  // 3. Pairwise Pearson correlations between the 6 metrics
   const corrPairs: CorrelationEntry[] = []
   for (let i = 0; i < phase1MapMetrics.length; i++) {
     for (let j = i; j < phase1MapMetrics.length; j++) {
@@ -141,5 +150,30 @@ export async function getStatsSummary(filters?: StatsFilters): Promise<StatsSumm
     }
   }
 
-  return { metricStats, continentDistributions, correlations: corrPairs }
+
+  const countrySelect = phase1MapMetrics.map((m) => `
+    AVG("${m}") AS mean_${m},
+    COUNT("${m}") AS n_${m}
+  `).join(',')
+
+  type CountryRow = { iso3: string; continent: string } & Record<string, number>
+  const countryRows = await runQuery<CountryRow>(`
+    SELECT iso3, continent, ${countrySelect}
+    FROM read_parquet('${parquetPath}')
+    ${where}
+    GROUP BY iso3, continent
+    ORDER BY continent, iso3
+  `)
+
+  const countryScores: CountryScore[] = countryRows.flatMap((row) =>
+    phase1MapMetrics.map((m) => ({
+      iso3: row.iso3,
+      continent: row.continent,
+      metric: m,
+      mean: Number(row[`mean_${m}`] ?? 0),
+      n: Number(row[`n_${m}`] ?? 0),
+    }))
+  )
+
+  return { metricStats, continentDistributions, countryScores, correlations: corrPairs }
 }

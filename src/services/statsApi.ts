@@ -24,6 +24,14 @@ export type ContinentDistribution = {
   n: number
 }
 
+export type CountryScore = {
+  iso3: string
+  continent: string
+  metric: string
+  mean: number
+  n: number
+}
+
 export type CorrelationEntry = {
   metric_a: Phase1Metric
   metric_b: Phase1Metric
@@ -33,6 +41,7 @@ export type CorrelationEntry = {
 export type StatsSummaryResponse = {
   metricStats: MetricStats[]
   continentDistributions: ContinentDistribution[]
+  countryScores: CountryScore[]
   correlations: CorrelationEntry[]
 }
 
