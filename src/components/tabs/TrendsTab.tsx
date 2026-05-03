@@ -5,192 +5,266 @@ import { useRadarData } from '../../hooks/useRadarData'
 import { radarConfig, metricLabels } from '../../types/metrics'
 import type { MapMetric } from '../../types/metrics'
 
-const CONTINENT_COLORS: Record<string, string> = {
-  Africa:   '#f97316',
-  Americas: '#3b82f6',
-  Asia:     '#10b981',
-  Europe:   '#8b5cf6',
-  Oceania:  '#ec4899',
-}
 const COUNTRY_PALETTE = [
   '#00e5c3','#ff4f6d','#f5a623','#7c6fff','#00c4e8',
-  '#ff9f43','#54a0ff','#5f27cd','#00d2d3','#ff6b6b',
-  '#1dd1a1','#feca57','#48dbfb','#ff9ff3','#c8d6e5',
+  '#ff9f43','#54a0ff','#c0392b','#00d2d3','#6ab04c',
+  '#1dd1a1','#feca57','#48dbfb','#e056fd','#badc58',
+  '#f9ca24','#6c5ce7','#fd9644','#26de81','#a29bfe',
 ]
-const FALLBACK = '#8892a4'
 
-function getColor(iso3: string, continent: string, idx: number): string {
-  return COUNTRY_PALETTE[idx % COUNTRY_PALETTE.length] ?? FALLBACK
+function getColor(_continent: string, idx: number): string {
+  return COUNTRY_PALETTE[idx % COUNTRY_PALETTE.length]
 }
 
 type RadarRow = { iso3: string; continent: string; [col: string]: number | string | null }
 
-function RadarChart({ data, columns }: { data: RadarRow[]; columns: string[] }) {
-  const svgRef = useRef<SVGSVGElement>(null)
-  const wrapperRef = useRef<HTMLDivElement>(null)
+function RadarChart({
+  data,
+  columns,
+  visibleIsos,
+}: {
+  data: RadarRow[]
+  columns: string[]
+  visibleIsos: Set<string>
+}) {
+  const svgRef  = useRef<SVGSVGElement>(null)
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const tipRef  = useRef<HTMLDivElement>(null)
+
+  const visible = useMemo(() => data.filter((r) => visibleIsos.has(r.iso3)), [data, visibleIsos])
 
   useEffect(() => {
-    if (!svgRef.current || !wrapperRef.current || data.length === 0 || columns.length < 3) return
+    const svg  = svgRef.current
+    const wrap = wrapRef.current
+    if (!svg || !wrap || visible.length === 0 || columns.length < 3) return
 
-    const W = wrapperRef.current.clientWidth || 520
-    const H = Math.min(W, 480)
-    const cx = W / 2
-    const cy = H / 2
-    const radius = Math.min(cx, cy) - 60
+    const W      = wrap.clientWidth || 540
+    const H      = Math.min(W * 0.88, 500)
+    const cx     = W / 2
+    const cy     = H / 2
+    const lblPad = columns.length > 4 ? 72 : 60
+    const radius = Math.min(cx, cy) - lblPad
+    const N      = columns.length
+    const aSlice = (2 * Math.PI) / N
 
     const domains: Record<string, [number, number]> = {}
     for (const col of columns) {
-      const vals = data.map((d) => Number(d[col])).filter((v) => isFinite(v))
-      const mn = d3.min(vals) ?? 0
-      const mx = d3.max(vals) ?? 1
-      domains[col] = [mn, mx === mn ? mx + 1 : mx]
+      const vals = data.map((d) => Number(d[col])).filter(isFinite)
+      let mn = d3.min(vals) ?? 0
+      let mx = d3.max(vals) ?? 1
+      if (mn === mx) { const s = mx === 0 ? 0.5 : Math.abs(mx) * 0.25; mn -= s; mx += s }
+      domains[col] = [mn, mx]
     }
 
-    const angleSlice = (2 * Math.PI) / columns.length
-
-    function radialPoint(colIdx: number, value: number): [number, number] {
-      const [mn, mx] = domains[columns[colIdx]]
-      const r = radius * ((value - mn) / (mx - mn))
-      const angle = angleSlice * colIdx - Math.PI / 2
-      return [cx + r * Math.cos(angle), cy + r * Math.sin(angle)]
+    function radialPt(ci: number, value: number): [number, number] {
+      const [mn, mx] = domains[columns[ci]]
+      const t = Math.max(0, Math.min(1, (value - mn) / (mx - mn)))
+      const a = aSlice * ci - Math.PI / 2
+      return [cx + radius * t * Math.cos(a), cy + radius * t * Math.sin(a)]
     }
 
-    const svg = d3.select(svgRef.current)
-    svg.selectAll('*').remove()
-    svg.attr('width', W).attr('height', H)
+    const n           = visible.length
+    const fillAlpha   = n <= 8 ? 0.10 : Math.max(0.02, 0.10 - (n - 8) / 52 * 0.08)
+    const strokeAlpha = n <= 8 ? 0.85 : Math.max(0.18, 0.85 - (n - 8) / 52 * 0.67)
+
+    const sel = d3.select(svg)
+    sel.selectAll('*').remove()
+    sel.attr('width', W).attr('height', H).attr('viewBox', `0 0 ${W} ${H}`)
 
     const levels = 5
     for (let lvl = 1; lvl <= levels; lvl++) {
-      const r = radius * (lvl / levels)
+      const r   = radius * (lvl / levels)
       const pts = columns.map((_, i) => {
-        const angle = angleSlice * i - Math.PI / 2
-        return `${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`
+        const a = aSlice * i - Math.PI / 2
+        return `${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`
       }).join(' ')
-      svg.append('polygon')
-        .attr('points', pts)
-        .attr('fill', 'none')
-        .attr('stroke', '#1e2436')
-        .attr('stroke-width', 1)
-      // Ring label
-      svg.append('text')
-        .attr('x', cx)
-        .attr('y', cy - r - 3)
-        .attr('text-anchor', 'middle')
-        .attr('fill', '#3a4155')
-        .attr('font-size', '9px')
-        .text(d3.format('.2f')(lvl / levels))
+      sel.append('polygon').attr('points', pts)
+        .attr('fill', lvl % 2 === 0 ? '#f8fafc' : 'none')
+        .attr('stroke', '#cbd5e1').attr('stroke-width', 0.5)
     }
 
     columns.forEach((col, i) => {
-      const angle = angleSlice * i - Math.PI / 2
-      const lx = cx + (radius + 18) * Math.cos(angle)
-      const ly = cy + (radius + 18) * Math.sin(angle)
-
-      svg.append('line')
+      const a = aSlice * i - Math.PI / 2
+      sel.append('line')
         .attr('x1', cx).attr('y1', cy)
-        .attr('x2', cx + radius * Math.cos(angle))
-        .attr('y2', cy + radius * Math.sin(angle))
-        .attr('stroke', '#2a3045').attr('stroke-width', 1)
+        .attr('x2', cx + radius * Math.cos(a)).attr('y2', cy + radius * Math.sin(a))
+        .attr('stroke', '#e2e8f0').attr('stroke-width', 1)
 
-      const label = metricLabels[col] ?? col
-      const words = label.split(' ')
-      const textEl = svg.append('text')
-        .attr('x', lx).attr('y', ly)
-        .attr('text-anchor', Math.abs(Math.cos(angle)) < 0.1 ? 'middle' : Math.cos(angle) > 0 ? 'start' : 'end')
-        .attr('fill', '#8892a4').attr('font-size', '10px')
+      const [, mx] = domains[col]
+      sel.append('text')
+        .attr('x', cx + (radius + 8) * Math.cos(a))
+        .attr('y', cy + (radius + 8) * Math.sin(a))
+        .attr('text-anchor', 'middle').attr('dominant-baseline', 'middle')
+        .attr('fill', '#b0bac8').attr('font-size', '8px')
+        .text(d3.format('.2f')(mx))
 
-      if (words.length <= 3) {
-        textEl.text(label)
+      const lx     = cx + (radius + lblPad * 0.55) * Math.cos(a)
+      const ly     = cy + (radius + lblPad * 0.55) * Math.sin(a)
+      const label  = metricLabels[col] ?? col
+      const words  = label.split(' ')
+      const anchor = Math.abs(Math.cos(a)) < 0.15 ? 'middle' : Math.cos(a) > 0 ? 'start' : 'end'
+
+      const txt = sel.append('text').attr('x', lx).attr('y', ly)
+        .attr('text-anchor', anchor).attr('fill', '#475569')
+        .attr('font-size', '10px').attr('font-weight', '500')
+
+      if (words.length <= 2) {
+        txt.text(label)
       } else {
         const mid = Math.ceil(words.length / 2)
-        textEl.append('tspan').attr('x', lx).attr('dy', '-0.4em').text(words.slice(0, mid).join(' '))
-        textEl.append('tspan').attr('x', lx).attr('dy', '1.2em').text(words.slice(mid).join(' '))
+        txt.append('tspan').attr('x', lx).attr('dy', '-0.55em').text(words.slice(0, mid).join(' '))
+        txt.append('tspan').attr('x', lx).attr('dy', '1.2em').text(words.slice(mid).join(' '))
       }
     })
 
-    const tooltip = d3.select('body').select<HTMLDivElement>('.radar-tooltip')
+    const pg = sel.append('g').attr('class', 'poly-group')
 
-    data.forEach((row, idx) => {
-      const color = getColor(row.iso3, row.continent, idx)
-      const pts = columns.map((col, i) => {
+    visible.forEach((row) => {
+      const origIdx = data.findIndex((d) => d.iso3 === row.iso3)
+      const color   = getColor(row.continent, origIdx)
+      const pts     = columns.map((col, i) => {
         const v = Number(row[col])
-        return isFinite(v) ? radialPoint(i, v) : [cx, cy] as [number, number]
+        return isFinite(v) ? radialPt(i, v) : ([cx, cy] as [number, number])
       })
+      const path = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ') + 'Z'
 
-      const pathData = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0]},${p[1]}`).join(' ') + 'Z'
+      pg.append('path').attr('class', `poly-fill iso-${row.iso3}`)
+        .attr('d', path).attr('fill', color).attr('fill-opacity', fillAlpha)
+        .attr('stroke', 'none').attr('pointer-events', 'none')
 
-      svg.append('path')
-        .attr('d', pathData)
-        .attr('fill', color).attr('fill-opacity', 0.07)
-        .attr('stroke', color).attr('stroke-width', 1.5).attr('stroke-opacity', 0.85)
+      pg.append('path').attr('class', `poly-stroke iso-${row.iso3}`)
+        .attr('d', path).attr('fill', 'none').attr('stroke', color)
+        .attr('stroke-width', 1.5).attr('stroke-opacity', strokeAlpha)
+        .attr('pointer-events', 'none')
 
-      pts.forEach(([px, py], i) => {
-        const v = Number(row[columns[i]])
-        if (!isFinite(v)) return
-        svg.append('circle')
-          .attr('cx', px).attr('cy', py).attr('r', 3)
-          .attr('fill', color).attr('stroke', '#0a0c10').attr('stroke-width', 0.5)
-          .on('mouseover', (event) => {
-            d3.select('.radar-tooltip')
-              .style('opacity', '1')
-              .style('left', `${(event as MouseEvent).pageX + 10}px`)
-              .style('top', `${(event as MouseEvent).pageY - 20}px`)
-              .html(`<strong>${row.iso3}</strong><br/>${metricLabels[columns[i]] ?? columns[i]}: ${v.toFixed(3)}`)
-          })
-          .on('mouseout', () => d3.select('.radar-tooltip').style('opacity', '0'))
-      })
+      pg.append('path').attr('class', `poly-hit iso-${row.iso3}`)
+        .attr('d', path).attr('fill', 'transparent').attr('stroke', 'transparent')
+        .attr('stroke-width', 8).attr('cursor', 'pointer')
+        .on('mouseenter', function (event: MouseEvent) {
+          sel.selectAll('.poly-fill').attr('fill-opacity', fillAlpha * 0.3)
+          sel.selectAll('.poly-stroke').attr('stroke-opacity', strokeAlpha * 0.25)
+          sel.selectAll(`.poly-fill.iso-${row.iso3}`).attr('fill-opacity', 0.22)
+          sel.selectAll(`.poly-stroke.iso-${row.iso3}`).attr('stroke-opacity', 1).attr('stroke-width', 2.5)
+          const tip = tipRef.current
+          if (!tip) return
+          tip.style.opacity = '1'
+          tip.style.left    = `${event.pageX + 14}px`
+          tip.style.top     = `${event.pageY - 28}px`
+          tip.innerHTML = `
+            <div style="font-weight:700;margin-bottom:4px">${row.iso3} · ${row.continent}</div>
+            ${columns.map((col) => {
+              const v = Number(row[col])
+              return `<div><span style="color:#64748b">${metricLabels[col] ?? col}:</span> ${isFinite(v) ? v.toFixed(3) : '—'}</div>`
+            }).join('')}
+          `
+        })
+        .on('mousemove', function (event: MouseEvent) {
+          const tip = tipRef.current
+          if (tip) { tip.style.left = `${event.pageX + 14}px`; tip.style.top = `${event.pageY - 28}px` }
+        })
+        .on('mouseleave', function () {
+          sel.selectAll('.poly-fill').attr('fill-opacity', fillAlpha)
+          sel.selectAll('.poly-stroke').attr('stroke-opacity', strokeAlpha).attr('stroke-width', 1.5)
+          const tip = tipRef.current
+          if (tip) tip.style.opacity = '0'
+        })
     })
 
-  }, [data, columns])
+    sel.append('circle').attr('cx', cx).attr('cy', cy).attr('r', 2).attr('fill', '#cbd5e1')
+
+  }, [visible, columns])
 
   return (
-    <div ref={wrapperRef} style={{ width: '100%', position: 'relative' }}>
-      <svg ref={svgRef} style={{ display: 'block', margin: '0 auto' }} />
+    <div ref={wrapRef} style={{ width: '100%', position: 'relative' }}>
+      <svg ref={svgRef} style={{ display: 'block', width: '100%', height: 'auto' }} />
+      <div ref={tipRef} style={{
+        position: 'fixed', pointerEvents: 'none', opacity: 0,
+        background: 'rgba(15,23,42,0.97)', border: '1px solid #334155',
+        borderRadius: '8px', padding: '10px 14px', fontSize: '12px',
+        lineHeight: '1.6', color: '#e2e8f0', zIndex: 9999,
+        maxWidth: '260px', transition: 'opacity 0.1s',
+      }} />
     </div>
   )
 }
 
-function RadarLegend({ data }: { data: RadarRow[] }) {
-  if (data.length === 0) return null
-  return (
-    <div className="radar-legend">
-      {data.map((row, idx) => (
-        <div key={row.iso3} className="radar-legend__item">
-          <span
-            className="radar-legend__swatch"
-            style={{ background: getColor(row.iso3, row.continent, idx) }}
-          />
-          <span className="radar-legend__label">{row.iso3}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function SubIndexSelector({
-  metric,
-  value,
-  onChange,
+function RadarLegend({
+  data,
+  visibleIsos,
+  onToggle,
+  onSelectAll,
+  onSelectNone,
 }: {
-  metric: MapMetric
-  value: string
-  onChange: (v: string) => void
+  data: RadarRow[]
+  visibleIsos: Set<string>
+  onToggle: (iso: string) => void
+  onSelectAll: () => void
+  onSelectNone: () => void
 }) {
+  if (data.length === 0) return null
+
+  const allChecked  = data.every((r) => visibleIsos.has(r.iso3))
+  const noneChecked = data.every((r) => !visibleIsos.has(r.iso3))
+
+  return (
+    <div className="radar-legend-wrapper">
+      <div className="radar-legend-controls">
+        <button
+          className={`radar-legend-ctrl-btn${allChecked ? ' active' : ''}`}
+          onClick={onSelectAll}
+        >
+          All
+        </button>
+        <button
+          className={`radar-legend-ctrl-btn${noneChecked ? ' active' : ''}`}
+          onClick={onSelectNone}
+        >
+          None
+        </button>
+        <span className="radar-legend-count">
+          {visibleIsos.size} / {data.length} shown
+        </span>
+      </div>
+      <div className="radar-legend">
+        {data.map((row, idx) => {
+          const checked = visibleIsos.has(row.iso3)
+          const color   = getColor(row.continent, idx)
+          return (
+            <label key={row.iso3} className={`radar-legend__item radar-legend__item--checkbox${checked ? ' checked' : ''}`}>
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() => onToggle(row.iso3)}
+                style={{ display: 'none' }}
+              />
+              <span
+                className="radar-legend__swatch"
+                style={{
+                  background: checked ? color : 'transparent',
+                  border: `2px solid ${color}`,
+                  opacity: checked ? 1 : 0.45,
+                }}
+              />
+              <span className="radar-legend__label" style={{ opacity: checked ? 1 : 0.45 }}>
+                {row.iso3}
+              </span>
+            </label>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function SubIndexSelector({ metric, value, onChange }: { metric: MapMetric; value: string; onChange: (v: string) => void }) {
   const cfg = radarConfig[metric]
-  if (!('subIndices' in cfg)) return null // CCVI has no sub-indices
-
-  const entries = Object.entries(cfg.subIndices)
-
+  if (!('subIndices' in cfg)) return null
   return (
     <div className="radar-subindex-selector">
       <label className="filter-label">Sub-index</label>
       <div className="filter-toggle-group">
-        {entries.map(([key, sub]) => (
-          <button
-            key={key}
-            className={`filter-toggle-btn${value === key ? ' active' : ''}`}
-            onClick={() => onChange(key)}
-          >
+        {Object.entries(cfg.subIndices).map(([key, sub]) => (
+          <button key={key} className={`filter-toggle-btn${value === key ? ' active' : ''}`} onClick={() => onChange(key)}>
             {sub.label}
           </button>
         ))}
@@ -201,96 +275,80 @@ function SubIndexSelector({
 
 export function TrendsTab() {
   const { filters } = useFilters()
-  const metric = filters.metric
+  const metric      = filters.metric
+  const cfg         = radarConfig[metric]
+  const hasSubIdx   = 'subIndices' in cfg
 
-  const cfg = radarConfig[metric]
-  const hasSubIndices = 'subIndices' in cfg
-
-  const defaultSubIndex = hasSubIndices ? Object.keys((cfg as { subIndices: Record<string, unknown> }).subIndices)[0] : ''
-  const [subIndex, setSubIndex] = useState(defaultSubIndex)
+  const defaultSub = hasSubIdx
+    ? Object.keys((cfg as { subIndices: Record<string, unknown> }).subIndices)[0]
+    : ''
+  const [subIndex, setSubIndex]       = useState(defaultSub)
+  const [visibleIsos, setVisibleIsos] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    const newDefault = hasSubIndices
+    const newDefault = hasSubIdx
       ? Object.keys((radarConfig[metric] as { subIndices: Record<string, unknown> }).subIndices)[0]
       : ''
     setSubIndex(newDefault)
   }, [metric])
 
   const columns = useMemo(() => {
-    if (!hasSubIndices) {
-      return (cfg as { columns: string[] }).columns
-    }
+    if (!hasSubIdx) return (cfg as { columns: string[] }).columns
     const sub = (cfg as { subIndices: Record<string, { columns: string[] }> }).subIndices[subIndex]
     return sub?.columns ?? []
   }, [metric, subIndex])
 
   const { data, loading, error } = useRadarData(
     columns,
-    filters.country,
-    filters.continent,
-    filters.geoMode,
-    filters.period,
-    filters.year,
-    filters.periodMode,
+    filters.country, filters.continent, filters.geoMode,
+    filters.period, filters.year, filters.periodMode,
   )
+
+  useEffect(() => {
+    if (data) setVisibleIsos(new Set(data.map((r) => r.iso3)))
+  }, [data])
+
+  const handleToggle    = (iso: string) =>
+    setVisibleIsos((prev) => { const s = new Set(prev); s.has(iso) ? s.delete(iso) : s.add(iso); return s })
+  const handleSelectAll  = () => setVisibleIsos(new Set(data?.map((r) => r.iso3) ?? []))
+  const handleSelectNone = () => setVisibleIsos(new Set())
 
   const periodLabel = filters.periodMode === 'quarter'
     ? filters.period.replace('-Q', ' Q')
     : `${filters.year} (avg)`
-
   const geoLabel = filters.geoMode === 'country'
     ? (filters.country !== 'all' ? filters.country : 'All countries')
     : (filters.continent !== 'all' ? filters.continent : 'All continents')
 
   return (
     <div className="trends-tab">
-      {/* Tooltip portal */}
-      <div
-        className="radar-tooltip"
-        style={{
-          position: 'fixed',
-          pointerEvents: 'none',
-          opacity: 0,
-          background: 'rgba(10,12,16,0.95)',
-          border: '1px solid #222733',
-          borderRadius: '6px',
-          padding: '8px 12px',
-          fontSize: '12px',
-          color: '#e8eaf0',
-          zIndex: 9999,
-          transition: 'opacity 0.1s',
-        }}
-      />
-
       <section className="stats-section">
         <header className="stats-section__header">
           <h3 className="stats-section__title">Radar Plot</h3>
-          <span className="stats-section__subtitle">
-            {periodLabel} · {geoLabel} · one polygon per country
-          </span>
+          <span className="stats-section__subtitle">{periodLabel} · {geoLabel} · one polygon per country</span>
         </header>
-
-        <SubIndexSelector metric={metric} value={subIndex} onChange={setSubIndex} />
-
-        {loading && (
-          <div className="stats-loading">
-            <span className="stats-loading__spinner" />
-            <p>Loading radar data…</p>
-          </div>
-        )}
-        {error && <div className="stats-empty"><p>⚠️ {error}</p></div>}
-        {!loading && !error && data && data.length === 0 && (
-          <div className="stats-empty"><p>No data for this selection.</p></div>
-        )}
-        {!loading && !error && data && data.length > 0 && columns.length >= 3 && (
-          <>
-            <RadarChart data={data} columns={columns} />
-            <RadarLegend data={data} />
-          </>
-        )}
-        {!loading && !error && columns.length < 3 && (
-          <div className="stats-empty"><p>Need at least 3 axes for radar chart.</p></div>
-        )}
+        <div style={{ padding: '0 1rem 1rem' }}>
+          <SubIndexSelector metric={metric} value={subIndex} onChange={setSubIndex} />
+          {loading && <div className="stats-loading"><span className="stats-loading__spinner" /><p>Loading…</p></div>}
+          {error   && <div className="stats-empty"><p>⚠️ {error}</p></div>}
+          {!loading && !error && data?.length === 0 && <div className="stats-empty"><p>No data for this selection.</p></div>}
+          {!loading && !error && (data?.length ?? 0) > 0 && columns.length >= 3 && (
+            <>
+              {visibleIsos.size === 0
+                ? <div className="stats-empty"><p>No countries selected — use the checkboxes below.</p></div>
+                : <RadarChart data={data!} columns={columns} visibleIsos={visibleIsos} />
+              }
+              <RadarLegend
+                data={data!}
+                visibleIsos={visibleIsos}
+                onToggle={handleToggle}
+                onSelectAll={handleSelectAll}
+                onSelectNone={handleSelectNone}
+              />
+            </>
+          )}
+          {!loading && !error && columns.length < 3 && <div className="stats-empty"><p>Need at least 3 axes.</p></div>}
+        </div>
       </section>
     </div>
   )
