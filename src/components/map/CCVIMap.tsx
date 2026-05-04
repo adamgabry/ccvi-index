@@ -30,10 +30,14 @@ function createEmptyFC() {
 function setMapSourceData(
   map: maplibregl.Map | null,
   fcs: ReturnType<typeof toMapFeatureCollections>,
-) {
-  if (!map || !map.isStyleLoaded()) return
+): boolean {
+  if (!map) return false
+
   const src = map.getSource(pointSourceId) as GeoJSONSource | undefined
-  src?.setData(fcs.points)
+  if (!src) return false
+
+  src.setData(fcs.points)
+  return true
 }
 
 export function CCVIMap({ metric, country, continent, period, year, periodMode }: CCVIMapProps) {
@@ -82,23 +86,6 @@ export function CCVIMap({ metric, country, continent, period, year, periodMode }
 
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right')
 
-    map.on('load', () => {
-      map.addSource(pointSourceId, { type: 'geojson', data: createEmptyFC() })
-      map.addLayer({
-        id: pointLayerId,
-        type: 'circle',
-        source: pointSourceId,
-        paint: {
-          'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 3.5, 12, 4.5, 14, 6],
-          'circle-stroke-width': 0.5,
-          'circle-stroke-color': 'rgba(15, 23, 42, 0.28)',
-          'circle-opacity': 0.78,
-          'circle-color': ['get', 'color'],
-        },
-      })
-      setMapSourceData(map, fcsRef.current)
-    })
-
     const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: false })
     popupRef.current = popup
 
@@ -113,9 +100,37 @@ export function CCVIMap({ metric, country, continent, period, year, periodMode }
       popup.setLngLat(coordinates).setHTML(getPopupHtml(properties)).addTo(map)
     }
 
-    map.on('click', pointLayerId, handleClick)
-    map.on('mouseenter', pointLayerId, () => { map.getCanvas().style.cursor = 'pointer' })
-    map.on('mouseleave', pointLayerId, () => { map.getCanvas().style.cursor = '' })
+    const ensurePointLayer = () => {
+      if (!map.getSource(pointSourceId)) {
+        map.addSource(pointSourceId, { type: 'geojson', data: createEmptyFC() })
+      }
+
+      if (!map.getLayer(pointLayerId)) {
+        map.addLayer({
+          id: pointLayerId,
+          type: 'circle',
+          source: pointSourceId,
+          paint: {
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 3.5, 12, 4.5, 14, 6],
+            'circle-stroke-width': 0.5,
+            'circle-stroke-color': 'rgba(15, 23, 42, 0.28)',
+            'circle-opacity': 0.78,
+            'circle-color': ['get', 'color'],
+          },
+        })
+        map.on('click', pointLayerId, handleClick)
+        map.on('mouseenter', pointLayerId, () => { map.getCanvas().style.cursor = 'pointer' })
+        map.on('mouseleave', pointLayerId, () => { map.getCanvas().style.cursor = '' })
+      }
+
+      setMapSourceData(map, fcsRef.current)
+    }
+
+    if (map.loaded()) {
+      ensurePointLayer()
+    } else {
+      map.once('load', ensurePointLayer)
+    }
 
     mapRef.current = map
 
@@ -126,7 +141,17 @@ export function CCVIMap({ metric, country, continent, period, year, periodMode }
     }
   }, [])
 
-  useEffect(() => { setMapSourceData(mapRef.current, featureCollections) }, [featureCollections])
+  useEffect(() => {
+    const map = mapRef.current
+    if (setMapSourceData(map, featureCollections) || !map) return
+
+    const applyWhenReady = () => { setMapSourceData(map, fcsRef.current) }
+    map.once('load', applyWhenReady)
+
+    return () => {
+      map.off('load', applyWhenReady)
+    }
+  }, [featureCollections])
 
   useEffect(() => {
     const map = mapRef.current
