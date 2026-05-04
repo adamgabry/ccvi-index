@@ -10,15 +10,6 @@ type Props = {
 
 const fmt = (v: number) => (Number.isFinite(v) ? v.toFixed(3) : '—')
 
-function getTableColumns(metric: MapMetric): string[] {
-  const cfg = radarConfig[metric]
-  if (!('subIndices' in cfg)) {
-    // CCVI: show its three pillars
-    return (cfg as { columns: string[] }).columns
-  }
-  return Object.values(cfg.subIndices).flatMap((sub) => sub.columns)
-}
-
 function getGroupedColumns(metric: MapMetric): { group: string; columns: string[] }[] {
   const cfg = radarConfig[metric]
   if (!('subIndices' in cfg)) {
