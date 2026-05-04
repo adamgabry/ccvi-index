@@ -4,7 +4,7 @@ import { phase1MapMetrics, type Phase1Metric } from '../../src/types/metrics'
 export const MAX_RAW_POINTS = 1000
 export const RAW_POINT_ZOOM_THRESHOLD = 11
 export const MAX_AGGREGATED_FEATURES = 4000
-export const BOOTSTRAP_POINT_COUNT = 10000
+export const BOOTSTRAP_POINT_COUNT = 1000000
 
 const MAX_MERCATOR_LAT = 85.05112878
 
