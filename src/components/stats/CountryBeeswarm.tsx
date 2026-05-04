@@ -26,6 +26,24 @@ const FALLBACK = '#94a3b8'
 const METRIC_DISPLAY: Record<string, string> = {
   CCVI: 'CCVI', CLI_risk: 'Climate Risk', CON_risk: 'Conflict Risk', VUL: 'Vulnerability',
 }
+const TOOLTIP_OFFSET = 12
+
+function positionTooltip(tip: HTMLDivElement, event: MouseEvent) {
+  const rect = tip.getBoundingClientRect()
+  let left = event.clientX + TOOLTIP_OFFSET
+  let top = event.clientY - rect.height - TOOLTIP_OFFSET
+
+  if (left + rect.width > window.innerWidth - TOOLTIP_OFFSET) {
+    left = event.clientX - rect.width - TOOLTIP_OFFSET
+  }
+
+  if (top < TOOLTIP_OFFSET) {
+    top = event.clientY + TOOLTIP_OFFSET
+  }
+
+  tip.style.left = `${Math.max(TOOLTIP_OFFSET, left)}px`
+  tip.style.top = `${Math.max(TOOLTIP_OFFSET, top)}px`
+}
 
 function beeswarm(
   items: { x: number; idx: number }[],
@@ -163,9 +181,6 @@ export function CountryBeeswarm({ countryScores, metric, geoLabel }: Props) {
 
             const t = tipRef.current
             if (!t) return
-            t.style.opacity = '1'
-            t.style.left    = `${event.pageX + 12}px`
-            t.style.top     = `${event.pageY - 28}px`
             t.innerHTML = `
               <div style="font-weight:700;font-size:13px;margin-bottom:3px">
                 ${d.iso3}
@@ -177,10 +192,12 @@ export function CountryBeeswarm({ countryScores, metric, geoLabel }: Props) {
               </div>
               <div style="color:#94a3b8;font-size:10px">avg over ${d.n.toLocaleString()} grid cells</div>
             `
+            positionTooltip(t, event)
+            t.style.opacity = '1'
           })
           .on('mousemove', (event: MouseEvent) => {
             const t = tipRef.current
-            if (t) { t.style.left = `${event.pageX + 12}px`; t.style.top = `${event.pageY - 28}px` }
+            if (t) positionTooltip(t, event)
           })
           .on('mouseleave', (event: MouseEvent) => {
             d3.select(event.target as Element)
@@ -230,7 +247,7 @@ export function CountryBeeswarm({ countryScores, metric, geoLabel }: Props) {
     leg.append('text').attr('x', 210).attr('y', 4).attr('font-size', '10px').attr('fill', '#94a3b8')
       .text('Continent median')
 
-  }, [countryScores, metric])
+  }, [column, countryScores, geoLabel, metric])
 
   useEffect(() => {
     return () => {
