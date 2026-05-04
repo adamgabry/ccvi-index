@@ -2,6 +2,7 @@ import type {
   AggregatedCellFeature,
   MapDataRequest,
   MapDataResponse,
+  MapFilters,
   MapMetadataResponse,
   MetricDomainMap,
   MetricSummary,
@@ -175,7 +176,7 @@ export async function getMapMetadata(): Promise<MapMetadataResponse> {
 
 export async function getBootstrapMapData(
   metric: Phase1Metric,
-  filters?: { country?: string; year?: number; quarter?: number },
+  filters?: MapFilters,
 ): Promise<MapDataResponse> {
   const cacheKey = `${metric}:${filters?.country ?? 'all'}:${filters?.continent ?? 'all'}:${filters?.year ?? 'na'}:${filters?.quarter ?? 'na'}`
   const cachedResponse = bootstrapCache.get(cacheKey)

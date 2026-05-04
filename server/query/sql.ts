@@ -85,10 +85,6 @@ function buildFilterClauses(bounds: MapBounds, filters?: MapFilters): string[] {
     clauses.push(`continent = ${quoteSqlString(filters.continent)}`)
   }
 
-  if (filters?.continent && filters.continent !== 'all') {
-    clauses.push(`continent = ${quoteSqlString(filters.continent)}`)
-  }
-
   if (typeof filters?.year === 'number') {
     clauses.push(`year = ${filters.year}`)
   }

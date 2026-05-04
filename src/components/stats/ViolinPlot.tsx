@@ -84,7 +84,6 @@ export function ViolinPlot({ distributions, metric, geoLabel }: Props) {
       d,
       pts: buildKdeCurve(d, xTicks),
     }))
-    const globalMaxDensity = d3.max(curves, (c) => d3.max(c.pts, (p) => p.density)) ?? 1
 
     const sel = d3.select(svg)
     sel.selectAll('*').remove()
