@@ -215,6 +215,8 @@ export function buildBootstrapPointsQuery(
       ${quoteIdentifier(metric)} AS "${metric}"
     FROM read_parquet(${quoteSqlString(parquetPath)})
     ${whereClause}
+    ORDER BY lat, lon, pgid
+    LIMIT ${BOOTSTRAP_POINT_COUNT}
   `
 }
 
