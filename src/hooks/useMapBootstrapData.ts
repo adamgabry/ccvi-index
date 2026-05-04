@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { fetchBootstrapMapData } from '../services/mapApi'
 import type { MapDataResponse } from '../types/mapData'
 import type { MapMetric } from '../types/metrics'
@@ -16,6 +16,7 @@ export function useMapBootstrapData(
   continent: string,
   period: string,
 ): MapBootstrapState {
+  const requestIdRef = useRef(0)
   const [state, setState] = useState<MapBootstrapState>({
     data: null,
     error: null,
@@ -23,6 +24,8 @@ export function useMapBootstrapData(
   })
 
   useEffect(() => {
+    const requestId = requestIdRef.current + 1
+    requestIdRef.current = requestId
     const controller = new AbortController()
 
     const yearOnlyMatch = period.match(/^(\d{4})-Y$/)
@@ -49,9 +52,12 @@ export function useMapBootstrapData(
       quarter,
       signal: controller.signal,
     })
-      .then((data) => setState({ data, error: null, isLoading: false }))
+      .then((data) => {
+        if (requestId !== requestIdRef.current) return
+        setState({ data, error: null, isLoading: false })
+      })
       .catch((error: unknown) => {
-        if (controller.signal.aborted) return
+        if (controller.signal.aborted || requestId !== requestIdRef.current) return
         setState({
           data: null,
           error: error instanceof Error ? error.message : 'Failed to load bootstrap map data.',
